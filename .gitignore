@@ -1,0 +1,6 @@
+.dev.vars
+.dev.vars.*
+.*.swp
+.wrangler/
+node_modules/
+

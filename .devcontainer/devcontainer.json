@@ -1,0 +1,33 @@
+{
+    "name": "capture",
+    "service": "devcontainer",
+    "dockerComposeFile": "docker-compose.yml",
+    "workspaceFolder": "/work/capture",
+    "customizations": {
+        "vscode": {
+            "settings": {
+                "terminal.integrated.shell.linux": "/bin/zsh"
+            },
+            "extensions": [
+                "cobaltblu27.rainbow-highlighter",
+                "oderwat.indent-rainbow",
+                "ms-ceintl.vscode-language-pack-ja",
+                "GitHub.vscode-pull-request-github",
+                "eamodio.gitlens",
+                "mohsen1.prettify-json",
+                "dbaeumer.vscode-eslint",
+                "esbenp.prettier-vscode",
+                "GitHub.copilot"
+            ]
+        }
+    },
+    "features": {
+        "ghcr.io/devcontainers/features/docker-in-docker:2.12.0": {},
+        "ghcr.io/rocker-org/devcontainer-features/apt-packages:1": {
+            "packages": "lv,zsh,vim,git"
+        }
+    },
+    "postCreateCommand": "npm install",
+    "forwardPorts": [],
+    "remoteUser": "node"
+}

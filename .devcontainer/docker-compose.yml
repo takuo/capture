@@ -1,0 +1,17 @@
+name: capture
+
+services:
+  devcontainer:
+    hostname: capture
+    build:
+      context: .
+    environment:
+      - LANG=ja_JP.UTF-8
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - ../:/work/capture
+      - home:/home/vscode
+    command: sleep infinity
+
+volumes:
+  home:

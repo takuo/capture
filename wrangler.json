@@ -1,0 +1,20 @@
+{
+	"name": "capture",
+	"main": "src/worker.ts",
+	"compatibility_date": "2024-11-11",
+	"observability": {
+		"enabled": true
+	},
+	"kv_namespaces": [
+		{
+		    "binding": "CAPTURE_KV",
+		    "id": "<KV_ID>"
+		}
+	],
+	"r2_buckets": [
+		{
+			"binding": "CAPTURE_BUCKET",
+			"bucket_name": "<R2_BUCKET_NAME>"
+		}
+	]
+}
