@@ -1,4 +1,4 @@
-import { FormData, File, R2Bucket, Request } from '@cloudflare/workers-types';
+import { FormData, File, R2Bucket, Request as WorkerRequest, ExecutionContext } from '@cloudflare/workers-types';
 
 export interface Env {
 	CAPTURE_BUCKET: R2Bucket;
@@ -61,13 +61,21 @@ async function handlePost(request: Request, env: Env): Promise<Response> {
 	return new Response(`${url.origin}/${hash}`);
 }
 
-async function handleGet(request: Request, env: Env): Promise<Response> {
+async function handleGet(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
 	const url = new URL(request.url);
+	const cacheKey = new Request(url.toString(), request);
+	const cache = caches.default;
+	let response = await cache.match(cacheKey);
+	if (response) {
+		return response;
+	}
 
 	// try static file first
 	const staticFile = await env.CAPTURE_BUCKET.get(`static${url.pathname}`);
-	if (staticFile) {	
-		return new Response(staticFile.body, { headers: { 'Content-Type': staticFile.httpMetadata?.contentType || 'image/png' } });
+	if (staticFile) {
+		response = new Response(staticFile.body, { headers: { 'Content-Type': staticFile.httpMetadata?.contentType || 'image/png' } });
+		ctx.waitUntil(cache.put(cacheKey, response.clone()));
+		return response;
 	}
 
 	// find key from KV
@@ -75,7 +83,7 @@ async function handleGet(request: Request, env: Env): Promise<Response> {
 	if (key == "") {
 		return new Response('Forbidden', { status: 403 });
 	}
-	const value = await env.CAPTURE_KV.get(key); 
+	const value = await env.CAPTURE_KV.get(key);
 	if (!value) {
 		return new Response('Key not found', { status: 404 });
 	}
@@ -85,16 +93,18 @@ async function handleGet(request: Request, env: Env): Promise<Response> {
 	if (!object) {
 		return new Response('Image not found', { status: 404 });
 	}
-	return new Response(object.body, { headers: { 'Content-Type': object.httpMetadata?.contentType || 'image/png' } });
+	response = new Response(object.body, { headers: { 'Content-Type': object.httpMetadata?.contentType || 'image/png' } });
+	ctx.waitUntil(cache.put(cacheKey, response.clone()));
+	return response;
 }
 
 export default {
-	async fetch(request: Request, env: Env): Promise<Response> {
+	async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
 		if (request.method === 'POST') {
 			return handlePost(request, env);
 		}
 		if (request.method === 'GET') {
-			return handleGet(request, env);
+			return handleGet(request, env, ctx);
 		}
 		return new Response('Method not allowed', { status: 405 });
 	}
