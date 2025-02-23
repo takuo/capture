@@ -10,28 +10,28 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v2
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-    - name: Install Wrangler
-      run: npm install
+      - name: Install Wrangler
+        run: npm install
 
-    - name: expand variables
-      env:
-        KV_ID: ${{ vars.KV_ID }}
-        R2_BUCKET_NAME: ${{ vars.R2_BUCKET_NAME }}
-      run: < wrangler.json envsubst > deploy.json 
+      - name: expand variables
+        env:
+          KV_ID: ${{ vars.KV_ID }}
+          R2_BUCKET_NAME: ${{ vars.R2_BUCKET_NAME }}
+        run: < wrangler.json envsubst > deploy.json
 
-    - name: Publish to Cloudflare Workers
-      run: |
-        OPTS=""
-        if [[ -n "${{ vars.WORKER_NAME }}" ]]; then
-          OPTS="$OPTS --name ${{ vars.WORKER_NAME }}"
-        fi
-        if [[ "${{ github.ref_name }}" -ne main ]]; then
-          OPTS="$OPTS --env dev"
-        fi
-        npx wrangler deploy -c deploy.json $OPTS
-      env:
-        WORKER_NAME: ${{ env.WORKER_NAME }}
-        CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+      - name: Publish to Cloudflare Workers
+        run: |
+          OPTS=""
+          if [[ -n "${{ vars.WORKER_NAME }}" ]]; then
+            OPTS="$OPTS --name ${{ vars.WORKER_NAME }}"
+          fi
+          if [[ "${{ github.ref_name }}" -ne main ]]; then
+            OPTS="$OPTS --env dev"
+          fi
+          npx wrangler deploy -c deploy.json $OPTS
+        env:
+          WORKER_NAME: ${{ env.WORKER_NAME }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
