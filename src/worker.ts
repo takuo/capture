@@ -19,7 +19,9 @@ function getExtension(filename: string): string {
 	return ext ? `.${ext}` : '.png';
 }
 
-app.post('/', async (c) => {
+app.all('/', async (c) => {  return c.text('Forbidden', 403) });
+
+app.post('/*', async (c) => {
 	const url = new URL(c.req.url);
 	const category = url.pathname.replace(/^\/|\/$/g, '');
 	const body = await c.req.parseBody();
