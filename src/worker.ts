@@ -1,9 +1,11 @@
-import { FormData, File, R2Bucket, Request as WorkerRequest, ExecutionContext } from '@cloudflare/workers-types';
+import { Hono } from 'hono';
 
 export interface Env {
 	CAPTURE_BUCKET: R2Bucket;
 	CAPTURE_KV: KVNamespace;
 }
+
+const app = new Hono<{ Bindings: Env }>();
 
 async function sha1(data: ArrayBuffer): Promise<string> {
 	const hash = await crypto.subtle.digest('SHA-1', data);
@@ -17,19 +19,18 @@ function getExtension(filename: string): string {
 	return ext ? `.${ext}` : '.png';
 }
 
-
-async function handlePost(request: Request, env: Env): Promise<Response> {
-	const url = new URL(request.url);
+app.post('/', async (c) => {
+	const url = new URL(c.req.url);
 	const category = url.pathname.replace(/^\/|\/$/g, '');
-	const formData = await request.formData();
-	const file = formData.get('file') as unknown as File;
+	const body = await c.req.parseBody();
+	const file = body['file'] as File;
 
 	if (!file) {
-		return new Response('No file uploaded', { status: 400 });
+		return c.text('No file uploaded', 400);
 	}
 	const buffer = await file.arrayBuffer();
 
-	const today = new Date()
+	const today = new Date();
 	const timestamp = today.getTime().toString();
 	const combinedBuffer = new Uint8Array([
 		...new Uint8Array(buffer),
@@ -40,10 +41,10 @@ async function handlePost(request: Request, env: Env): Promise<Response> {
 	const extension = getExtension(file.name);
 	const key = `${hash}${extension}`;
 
-	if (category == "static") { // for special files
+	if (category == "static") {
 		const filename = `static/${key}`;
-		await env.CAPTURE_BUCKET.put(filename, buffer);
-		return new Response(`${url.origin}/${hash}`);
+		await c.env.CAPTURE_BUCKET.put(filename, buffer);
+		return c.text(`${url.origin}/${hash}`);
 	}
 
 	const dateTimeFormat = new Intl.DateTimeFormat('ja-JP', {
@@ -55,57 +56,44 @@ async function handlePost(request: Request, env: Env): Promise<Response> {
 	const capValue = { timestamp: timestamp, date: dateTimeFormat.format(today), category: category, extension: extension };
 	const fileName = (category != "" ? category + "/" : category) + `${capValue.date}/${key}`;
 
-	await env.CAPTURE_BUCKET.put(fileName, buffer);
-	await env.CAPTURE_KV.put(hash, JSON.stringify(capValue), { expirationTtl: 60 * 60 * 24 * 365 });
+	await c.env.CAPTURE_BUCKET.put(fileName, buffer);
+	c.executionCtx.waitUntil(c.env.CAPTURE_KV.put(hash, JSON.stringify(capValue), { expirationTtl: 60 * 60 * 24 * 365 }));
+	return c.text(`${url.origin}/${hash}`);
+});
 
-	return new Response(`${url.origin}/${hash}`);
-}
-
-async function handleGet(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
-	const url = new URL(request.url);
-	const cacheKey = new Request(url.toString(), request);
+app.get('/*', async (c) => {
+	const url = new URL(c.req.url);
+	const cacheKey = new Request(url.toString(), c.req.raw);
 	const cache = caches.default;
 	let response = await cache.match(cacheKey);
 	if (response) {
 		return response;
 	}
 
-	// try static file first
-	const staticFile = await env.CAPTURE_BUCKET.get(`static${url.pathname}`);
+	const staticFile = await c.env.CAPTURE_BUCKET.get(`static${url.pathname}`);
 	if (staticFile) {
 		response = new Response(staticFile.body, { headers: { 'Content-Type': staticFile.httpMetadata?.contentType || 'image/png' } });
-		ctx.waitUntil(cache.put(cacheKey, response.clone()));
+		c.executionCtx.waitUntil(cache.put(cacheKey, response.clone()));
 		return response;
 	}
 
-	// find key from KV
-	const key = url.pathname.substring(1).replace(/\.*$/g, ''); // trim '^/', '.ext$'
+	const key = url.pathname.substring(1).replace(/\.*$/g, '');
 	if (key == "") {
-		return new Response('Forbidden', { status: 403 });
+		return c.text('Forbidden', 403);
 	}
-	const value = await env.CAPTURE_KV.get(key);
+	const value = await c.env.CAPTURE_KV.get(key);
 	if (!value) {
-		return new Response('Key not found', { status: 404 });
+		return c.text('Key not found', 404);
 	}
 	const capValue = JSON.parse(value);
 	const fileName = (capValue.category != "" ? capValue.category + "/" : "") + `${capValue.date}/${key}${capValue.extension}`;
-	const object = await env.CAPTURE_BUCKET.get(fileName);
+	const object = await c.env.CAPTURE_BUCKET.get(fileName);
 	if (!object) {
-		return new Response('Image not found', { status: 404 });
+		return c.text('Image not found', 404);
 	}
 	response = new Response(object.body, { headers: { 'Content-Type': object.httpMetadata?.contentType || 'image/png' } });
-	ctx.waitUntil(cache.put(cacheKey, response.clone()));
+	c.executionCtx.waitUntil(cache.put(cacheKey, response.clone()));
 	return response;
-}
+});
 
-export default {
-	async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
-		if (request.method === 'POST') {
-			return handlePost(request, env);
-		}
-		if (request.method === 'GET') {
-			return handleGet(request, env, ctx);
-		}
-		return new Response('Method not allowed', { status: 405 });
-	}
-};
+export default app;
