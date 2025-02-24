@@ -59,7 +59,7 @@ app.post('/*', async (c) => {
 	const fileName = (category != "" ? category + "/" : category) + `${capValue.date}/${key}`;
 
 	await c.env.CAPTURE_BUCKET.put(fileName, buffer);
-	c.executionCtx.waitUntil(c.env.CAPTURE_KV.put(hash, JSON.stringify(capValue), { expirationTtl: 60 * 60 * 24 * 365 }));
+	await c.env.CAPTURE_KV.put(hash, JSON.stringify(capValue), { expirationTtl: 60 * 60 * 24 * 365 });
 	return c.text(`${url.origin}/${hash}`);
 });
 
