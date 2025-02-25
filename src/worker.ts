@@ -1,12 +1,22 @@
 import { Hono } from 'hono';
+import { cors } from 'hono/cors';
 
 export interface Env {
 	CAPTURE_BUCKET: R2Bucket;
 	CAPTURE_KV: KVNamespace;
 	R2_DOMAIN: string;
+	CORS_ORIGINS: string;
 }
 
 const app = new Hono<{ Bindings: Env }>();
+
+// CORS should be called before the route
+app.use('*', async (c, next) => {
+	const corsMiddlewareHandler = cors({
+		origin: c.env.CORS_ORIGINS.split(','),
+	})
+	return corsMiddlewareHandler(c, next)
+})
 
 async function sha1(data: ArrayBuffer): Promise<string> {
 	const hash = await crypto.subtle.digest('SHA-1', data);

@@ -6,7 +6,8 @@
 		"enabled": true
 	},
 	"vars": {
-		"R2_DOMAIN": "${R2_DOMAIN}"
+		"R2_DOMAIN": "${R2_DOMAIN}",
+		"CORS_ORIGINS": "${CORS_ORIGINS}"
 	},
 	"kv_namespaces": [
 		{
