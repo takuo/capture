@@ -3,6 +3,8 @@
 *Capture* is a service for uploading, storing, and retrieving image files instantly.<br>
 It runs on Cloudflare Workers using the Hono framework and utilizes Cloudflare's cloud infrastructure for storage.
 
+*Capture* returns an R2 public access URL, so using a custom domain for R2 is highly recommended.
+
 ## Requirements
 
 * Cloudflare account (free plan is OK)
@@ -21,30 +23,15 @@ Uploads a file. The path name is saved as the category in the metadata.
   - `file`: The file to be uploaded
 
 The path prefix delimiter (`/`) is preserved and becomes the prefix delimiter in R2.<br>
-Prefix help in setting rules in R2. <br>
+Prefixes help in setting rules in R2. <br>
 For example, you can set `/temporary/foo` and `/temporary/bar` to be deleted in 1 week and 1 month respectively.<br>
 
 #### Response
 
 plain text
 
-- **Success**: The URL which will be constructed with domainname and R2 `key` to access the uploaded file.
+- **Success**: The URL which will be constructed with the domain name and R2 `key` to access the uploaded file.
 - **Failure**: Error message
-
-### GET /:key
-
-Retrieves a file.
-
-- **URL**: `/:key`
-- **Method**: `GET`
-
-Retrieves the image file associated with the given `:key`.<br>
-The `:key` should contain prefix.
-
-#### Response
-
-- **Success**: File content (image data)
-- **Failure**: Error message (plain text)
 
 ## Development
 
