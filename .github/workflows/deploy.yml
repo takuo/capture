@@ -20,7 +20,7 @@ jobs:
         env:
           KV_ID: ${{ vars.KV_ID }}
           R2_BUCKET_NAME: ${{ vars.R2_BUCKET_NAME }}
-          R2_DOMAIN: ${{ vars.R2_DOMAIN }}
+          R2_DOMAIN: ${{ secrets.R2_DOMAIN }}
         run: < wrangler.json envsubst > deploy.json
 
       - name: Publish to Cloudflare Workers
