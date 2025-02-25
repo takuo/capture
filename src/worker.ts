@@ -3,6 +3,7 @@ import { Hono } from 'hono';
 export interface Env {
 	CAPTURE_BUCKET: R2Bucket;
 	CAPTURE_KV: KVNamespace;
+	R2_DOMAIN: string;
 }
 
 const app = new Hono<{ Bindings: Env }>();
@@ -45,22 +46,26 @@ app.post('/*', async (c) => {
 
 	if (category == "static") {
 		const filename = `static/${key}`;
-		await c.env.CAPTURE_BUCKET.put(filename, buffer);
-		return c.text(`${url.origin}/${hash}`);
+		const options: R2PutOptions = {
+			customMetadata: {
+				datetime: today.toISOString(),
+				category: "static",
+			}
+		};
+		const result = await c.env.CAPTURE_BUCKET.put(filename, buffer, options);
+		return c.text(`https://${c.env.R2_DOMAIN}/${result.key}`);
 	}
 
-	const dateTimeFormat = new Intl.DateTimeFormat('ja-JP', {
-		year: 'numeric',
-		month: '2-digit',
-		day: '2-digit',
-		timeZone: 'Asia/Tokyo'
-	});
-	const capValue = { timestamp: timestamp, date: dateTimeFormat.format(today), category: category, extension: extension };
-	const fileName = (category != "" ? category + "/" : category) + `${capValue.date}/${key}`;
+	const fileName = (category != "" ? category + "/" : category) + key;
+	const options: R2PutOptions = {
+		customMetadata: {
+			datetime: today.toISOString(),
+			category: category,
+		}
+	};
 
-	await c.env.CAPTURE_BUCKET.put(fileName, buffer);
-	await c.env.CAPTURE_KV.put(hash, JSON.stringify(capValue), { expirationTtl: 60 * 60 * 24 * 365 });
-	return c.text(`${url.origin}/${hash}`);
+	const result = await c.env.CAPTURE_BUCKET.put(fileName, buffer, options);
+	return c.text(`https://${c.env.R2_DOMAIN}/${result.key}`);
 });
 
 app.get('/*', async (c) => {
