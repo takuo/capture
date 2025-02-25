@@ -5,6 +5,9 @@
 	"observability": {
 		"enabled": true
 	},
+	"vars": {
+		"R2_DOMAIN": "${R2_DOMAIN}"
+	},
 	"kv_namespaces": [
 		{
 			"binding": "CAPTURE_KV",
