@@ -1,11 +1,13 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
+import { bearerAuth } from 'hono/bearer-auth';
 
 export interface Env {
 	CAPTURE_BUCKET: R2Bucket;
 	CAPTURE_KV: KVNamespace;
 	R2_DOMAIN: string;
 	CORS_ORIGINS: string;
+	API_TOKEN: string;
 }
 
 const app = new Hono<{ Bindings: Env }>();
@@ -15,8 +17,16 @@ app.use('*', async (c, next) => {
 	const corsMiddlewareHandler = cors({
 		origin: c.env.CORS_ORIGINS.split(','),
 	})
-	return corsMiddlewareHandler(c, next)
-})
+	return corsMiddlewareHandler(c, next);
+});
+
+// bearerauth
+app.use('*', async (c, next) => {
+	if (c.env.API_TOKEN != "") {
+		const bearerMiddlewareHandler = bearerAuth({ token: c.env.API_TOKEN });
+		return bearerMiddlewareHandler(c, next);
+	}
+});
 
 async function sha1(data: ArrayBuffer): Promise<string> {
 	const hash = await crypto.subtle.digest('SHA-1', data);

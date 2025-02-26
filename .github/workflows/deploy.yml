@@ -22,7 +22,10 @@ jobs:
           R2_BUCKET_NAME: ${{ vars.R2_BUCKET_NAME }}
           R2_DOMAIN: ${{ secrets.R2_DOMAIN }}
           CORS_ORIGINS: ${{ secrets.CORS_ORIGINS }}
-        run: < wrangler.json envsubst > deploy.json
+          API_TOKEN: ${{ secrets.CAPTURE_API_TOKEN }}
+        run: |
+          < wrangler.json envsubst > deploy.json
+          echo 'API_TOKEN="${API_TOKEN}"' | envsubst > .env
 
       - name: Publish to Cloudflare Workers
         run: |
