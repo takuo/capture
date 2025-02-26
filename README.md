@@ -1,19 +1,19 @@
 # Description
 
-*Capture* is a service for uploading, storing, and retrieving image files instantly.<br>
+_Capture_ is a service for uploading, storing, and retrieving image files instantly.<br>
 It runs on Cloudflare Workers using the Hono framework and utilizes Cloudflare's cloud infrastructure for storage.
 
-*Capture* returns an R2 public access URL, so using a custom domain for R2 is highly recommended.
+_Capture_ returns an R2 public access URL, so using a custom domain for R2 is highly recommended.
 
 ## Requirements
 
-* Cloudflare account (free plan is OK)
-  * Cloudflare Workers, R2
-  * Custom domain name (optional)
+- Cloudflare account (free plan is OK)
+  - Cloudflare Workers, R2
+  - Custom domain name (optional)
 
 ## API Endpoints
 
-### POST /*
+### POST /\*
 
 Uploads a file. The path name is saved as the category in the metadata.
 
@@ -35,13 +35,6 @@ plain text
 
 ## Development
 
-### Environment Variables
-
-The following environment variables need to be set:
-
-- `CAPTURE_BUCKET`: Instance of R2 Bucket
-- `R2_DOMAIN`: Custom Domain Name for R2 Bucket
-
 ### Install Dependencies
 
 ```bash
@@ -59,6 +52,15 @@ npx wrangler dev
 ```bash
 npx wrangler deploy
 ```
+
+### Environment Variables
+
+The following environment variables need to be set:
+
+- `CAPTURE_BUCKET`: Instance of R2 Bucket.
+- `R2_DOMAIN`: Custom Domain Name for R2 Bucket.
+- `CORS_ORIGINS`: Comma-separated list of allowed origins for CORS.
+- `API_TOKEN`: API Token for Authorization, if it's not set, no authorization is required.
 
 ## License
 
