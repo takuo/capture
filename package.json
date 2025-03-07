@@ -12,7 +12,7 @@
 		"format": "prettier --write ."
 	},
 	"devDependencies": {
-		"@cloudflare/vitest-pool-workers": "^0.7.5",
+		"@cloudflare/vitest-pool-workers": "^0.7.6",
 		"@cloudflare/workers-types": "^4.20250303.0",
 		"hono": "^4.7.4",
 		"typescript": "^5.8.2",
