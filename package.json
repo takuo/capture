@@ -9,7 +9,8 @@
 		"test": "vitest",
 		"cf-typegen": "wrangler types",
 		"lint": "eslint .",
-		"format": "prettier --write ."
+		"format": "prettier --write .",
+		"build": "wrangler deploy --dry-run --outdir=dist"
 	},
 	"devDependencies": {
 		"@cloudflare/vitest-pool-workers": "^0.7.7",
