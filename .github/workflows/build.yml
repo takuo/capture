@@ -5,6 +5,10 @@ on:
     branches: [main]
   pull_request:
 
+permissions:
+  contents: write
+  pull-requests: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -23,3 +27,10 @@ jobs:
 
       - name: Run build
         run: npm run build
+
+      - name: approve
+        if: github.event.pull_request.user.login == 'dependabot[bot]' && github.repository == 'takuo/capture'
+        run: gh pr review "$PR_URL" --approve --body 'Automated approval for Dependabot updates.'
+        env:
+          PR_URL: ${{github.event.pull_request.html_url}}
+          GH_TOKEN: ${{secrets.GITHUB_TOKEN}}
