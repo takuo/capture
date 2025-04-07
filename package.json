@@ -18,6 +18,6 @@
 		"hono": "^4.7.5",
 		"typescript": "^5.8.2",
 		"vitest": "~3.0.9",
-		"wrangler": "^4.7.1"
+		"wrangler": "^4.7.2"
 	}
 }
