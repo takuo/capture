@@ -30,7 +30,7 @@ jobs:
           export R2_BUCKET_NAME="EXAMPLE_BUCKET"
           export R2_DOMAIN="example.com"
           export KV_ID="EXAMPLE_KV"
-          envsubst -i .env.example -o deploy.json
+          < wrangler.json envsubst > deploy.json
           npx wrangler deploy -c deploy.json --dry-run --outdir=dist
 
       - name: approve
