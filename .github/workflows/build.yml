@@ -26,7 +26,12 @@ jobs:
         run: npm ci
 
       - name: Run build
-        run: npm run build
+        run: |
+          export R2_BUCKET_NAME="EXAMPLE_BUCKET"
+          export R2_DOMAIN="example.com"
+          export KV_ID="EXAMPLE_KV"
+          envsubst -i .env.example -o deploy.json
+          npx wrangler deploy -c deploy.json --dry-run --outdir=dist
 
       - name: approve
         if: github.event.pull_request.user.login == 'dependabot[bot]' && github.repository == 'takuo/capture'
