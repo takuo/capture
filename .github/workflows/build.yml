@@ -29,7 +29,6 @@ jobs:
         run: |
           export R2_BUCKET_NAME="exapmple-bucket"
           export R2_DOMAIN="example.com"
-          export KV_ID="example"
           < wrangler.json envsubst > deploy.json
           npx wrangler deploy -c deploy.json --dry-run --outdir=dist
 

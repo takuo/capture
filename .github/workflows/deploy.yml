@@ -18,7 +18,6 @@ jobs:
 
       - name: expand variables
         env:
-          KV_ID: ${{ vars.KV_ID }}
           R2_BUCKET_NAME: ${{ vars.R2_BUCKET_NAME }}
           R2_DOMAIN: ${{ secrets.R2_DOMAIN }}
           CORS_ORIGINS: ${{ secrets.CORS_ORIGINS }}

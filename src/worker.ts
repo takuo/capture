@@ -4,7 +4,6 @@ import { bearerAuth } from 'hono/bearer-auth';
 
 export interface Env {
 	CAPTURE_BUCKET: R2Bucket;
-	CAPTURE_KV: KVNamespace;
 	R2_DOMAIN: string;
 	CORS_ORIGINS: string;
 	API_TOKEN: string;
@@ -104,23 +103,7 @@ app.get('/*', async (c) => {
 		return response;
 	}
 
-	const key = url.pathname.substring(1).replace(/\.*$/g, '');
-	if (key == "") {
-		return c.text('Forbidden', 403);
-	}
-	const value = await c.env.CAPTURE_KV.get(key);
-	if (!value) {
-		return c.text('Key not found', 404);
-	}
-	const capValue = JSON.parse(value);
-	const fileName = (capValue.category != "" ? capValue.category + "/" : "") + `${capValue.date}/${key}${capValue.extension}`;
-	const object = await c.env.CAPTURE_BUCKET.get(fileName);
-	if (!object) {
-		return c.text('Image not found', 404);
-	}
-	response = new Response(object.body, { headers: { 'Content-Type': object.httpMetadata?.contentType || 'image/png' } });
-	c.executionCtx.waitUntil(cache.put(cacheKey, response.clone()));
-	return response;
+	return c.text('Forbidden', 403);
 });
 
 export default app;
