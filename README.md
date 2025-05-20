@@ -64,4 +64,4 @@ The following environment variables need to be set:
 
 ## License
 
-This project is licensed under the MIT License.
+This project is licensed under the BSD 2-Clause License.
