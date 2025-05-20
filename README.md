@@ -30,7 +30,7 @@ For example, you can set `/temporary/foo` and `/temporary/bar` to be deleted in 
 
 plain text
 
-- **Success**: The URL which will be constructed with the domain name and R2 `key` to access the uploaded file.
+- **Success**: The URL which has been constructed with the domain name and R2 `key` to access the uploaded file.
 - **Failure**: Error message
 
 ## Development
