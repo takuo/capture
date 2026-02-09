@@ -14,7 +14,7 @@
 	},
 	"devDependencies": {
 		"@cloudflare/vitest-pool-workers": "^0.12.8",
-		"@cloudflare/workers-types": "^4.20260124.0",
+		"@cloudflare/workers-types": "^4.20260207.0",
 		"hono": "^4.11.7",
 		"typescript": "^5.9.3",
 		"vitest": "~3.2.4",
