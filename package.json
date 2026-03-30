@@ -13,7 +13,7 @@
 		"build": "wrangler deploy --dry-run --outdir=dist"
 	},
 	"devDependencies": {
-		"@cloudflare/vitest-pool-workers": "^0.12.20",
+		"@cloudflare/vitest-pool-workers": "^0.13.5",
 		"@cloudflare/workers-types": "^4.20260329.1",
 		"hono": "^4.12.9",
 		"typescript": "^5.9.3",
