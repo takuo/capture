@@ -1,4 +1,4 @@
-import { env, SELF } from 'cloudflare:test';
+import { env, exports } from 'cloudflare:workers';
 import { describe, expect, it } from 'vitest';
 import { detectImageType } from '../src/worker';
 
@@ -9,7 +9,7 @@ function upload(path: string, file?: File | string, headers: Record<string, stri
 	if (file !== undefined) {
 		form.append('file', file);
 	}
-	return SELF.fetch(`https://capture.example.com${path}`, { method: 'POST', body: form, headers });
+	return exports.default.fetch(`https://capture.example.com${path}`, { method: 'POST', body: form, headers });
 }
 
 const PNG = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
@@ -101,7 +101,7 @@ describe('GET /*', () => {
 		await env.CAPTURE_BUCKET.put('static/logo.png', new Uint8Array([1, 2, 3]), {
 			httpMetadata: { contentType: 'image/png' },
 		});
-		const res = await SELF.fetch('https://capture.example.com/logo.png');
+		const res = await exports.default.fetch('https://capture.example.com/logo.png');
 		expect(res.status).toBe(200);
 		expect(res.headers.get('content-type')).toBe('image/png');
 		expect(res.headers.get('etag')).toBeTruthy();
@@ -109,19 +109,19 @@ describe('GET /*', () => {
 	});
 
 	it('returns 404 for missing files', async () => {
-		const res = await SELF.fetch('https://capture.example.com/missing.png');
+		const res = await exports.default.fetch('https://capture.example.com/missing.png');
 		expect(res.status).toBe(404);
 	});
 
 	it('returns 403 for the root', async () => {
-		const res = await SELF.fetch('https://capture.example.com/');
+		const res = await exports.default.fetch('https://capture.example.com/');
 		expect(res.status).toBe(403);
 	});
 });
 
 describe('CORS', () => {
 	it('allows configured origins', async () => {
-		const res = await SELF.fetch('https://capture.example.com/', {
+		const res = await exports.default.fetch('https://capture.example.com/', {
 			method: 'OPTIONS',
 			headers: { Origin: 'https://other.example.com', 'Access-Control-Request-Method': 'POST' },
 		});
