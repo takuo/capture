@@ -24,7 +24,8 @@ Uploads a file. The path name is saved as the category in the metadata.
   - `file`: The image file to be uploaded (PNG, JPEG, GIF, WebP or AVIF, up to 20 MiB)
 
 The prefix is required and may contain only alphanumerics, `-` and `_` in each segment.
-The object key is `<prefix>/<uuid>.<ext>`, where the extension is derived from the file's content type.
+The file type is detected from its content (magic bytes); the declared Content-Type and file name are ignored.<br>
+The object key is `<prefix>/<uuid>.<ext>`, where the extension is derived from the detected type.
 
 The path prefix delimiter (`/`) is preserved and becomes the prefix delimiter in R2.<br>
 Prefixes help in setting rules in R2. <br>

@@ -1,5 +1,6 @@
 import { env, SELF } from 'cloudflare:test';
 import { describe, expect, it } from 'vitest';
+import { detectImageType } from '../src/worker';
 
 const AUTH = { Authorization: 'Bearer test-token' };
 
@@ -11,8 +12,15 @@ function upload(path: string, file?: File | string, headers: Record<string, stri
 	return SELF.fetch(`https://capture.example.com${path}`, { method: 'POST', body: form, headers });
 }
 
-function png(size = 8) {
-	return new File([new Uint8Array(size)], 'image.png', { type: 'image/png' });
+const PNG = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
+const JPEG = [0xff, 0xd8, 0xff, 0xe0];
+
+function bytes(...parts: (string | number[])[]) {
+	return new Uint8Array(parts.flatMap((p) => (typeof p === 'string' ? Array.from(p, (ch) => ch.charCodeAt(0)) : p)));
+}
+
+function png(type = 'image/png') {
+	return new File([bytes(PNG, [0, 0, 0, 0])], 'image.png', { type });
 }
 
 describe('POST /*', () => {
@@ -34,10 +42,18 @@ describe('POST /*', () => {
 		expect(object?.customMetadata?.category).toBe('temporary/foo');
 	});
 
-	it('derives the extension from the content type', async () => {
-		const file = new File([new Uint8Array(8)], 'noext', { type: 'image/jpeg' });
-		const res = await upload('/tmp', file);
-		expect(await res.text()).toMatch(/\.jpg$/);
+	it('detects the type from magic bytes regardless of declared type and name', async () => {
+		const res = await upload('/tmp', new File([bytes(JPEG)], 'noext', { type: 'application/octet-stream' }));
+		expect(res.status).toBe(201);
+		const key = new URL(await res.text()).pathname.slice(1);
+		expect(key).toMatch(/\.jpg$/);
+		const object = await env.CAPTURE_BUCKET.head(key);
+		expect(object?.httpMetadata?.contentType).toBe('image/jpeg');
+	});
+
+	it('rejects content that is not an image even if declared as one', async () => {
+		const file = new File(['<script></script>'], 'x.png', { type: 'image/png' });
+		expect((await upload('/tmp', file)).status).toBe(415);
 	});
 
 	it('rejects a missing or non-file field', async () => {
@@ -54,6 +70,29 @@ describe('POST /*', () => {
 		expect((await upload('/', png())).status).toBe(400);
 		expect((await upload('/a%20b', png())).status).toBe(400);
 		expect((await upload('/a//b', png())).status).toBe(400);
+	});
+});
+
+describe('detectImageType', () => {
+	it.each([
+		['png', bytes(PNG)],
+		['jpg', bytes(JPEG)],
+		['gif', bytes('GIF89a')],
+		['gif', bytes('GIF87a')],
+		['webp', bytes('RIFF', [0, 0, 0, 0], 'WEBPVP8 ')],
+		['avif', bytes([0, 0, 0, 0x14], 'ftypavif', [0, 0, 0, 0], 'mif1')],
+		['avif', bytes([0, 0, 0, 0x18], 'ftypmif1', [0, 0, 0, 0], 'mif1avif')],
+	])('detects %s', (extension, data) => {
+		expect(detectImageType(data)?.extension).toBe(extension);
+	});
+
+	it.each([
+		['empty', bytes()],
+		['truncated png', bytes(PNG.slice(0, 4))],
+		['heic', bytes([0, 0, 0, 0x14], 'ftypheic', [0, 0, 0, 0], 'mif1')],
+		['svg', bytes('<svg xmlns="http://www.w3.org/2000/svg"></svg>')],
+	])('rejects %s', (_, data) => {
+		expect(detectImageType(data)).toBeUndefined();
 	});
 });
 
