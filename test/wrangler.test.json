@@ -1,0 +1,16 @@
+{
+	"name": "capture-test",
+	"main": "../src/worker.ts",
+	"compatibility_date": "2024-11-11",
+	"vars": {
+		"R2_DOMAIN": "r2.example.com",
+		"CORS_ORIGINS": "https://allowed.example.com, https://other.example.com",
+		"API_TOKEN": "test-token"
+	},
+	"r2_buckets": [
+		{
+			"binding": "CAPTURE_BUCKET",
+			"bucket_name": "capture-test"
+		}
+	]
+}

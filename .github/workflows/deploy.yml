@@ -5,6 +5,13 @@ on:
     branches:
       - main
 
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -13,29 +20,43 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v7
 
-      - name: Install Wrangler
-        run: npm install
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: "npm"
 
-      - name: expand variables
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type check
+        run: npm run typecheck
+
+      - name: Test
+        run: npm test -- --run
+
+      - name: Expand variables
         env:
           R2_BUCKET_NAME: ${{ vars.R2_BUCKET_NAME }}
           R2_DOMAIN: ${{ secrets.R2_DOMAIN }}
           CORS_ORIGINS: ${{ secrets.CORS_ORIGINS }}
-          API_TOKEN: ${{ secrets.CAPTURE_API_TOKEN }}
-        run: |
-          < wrangler.json envsubst > deploy.json
-          echo 'API_TOKEN="${API_TOKEN}"' | envsubst > .env
+        run: envsubst < wrangler.json > deploy.json
 
       - name: Publish to Cloudflare Workers
-        run: |
-          OPTS=""
-          if [[ -n "${{ vars.WORKER_NAME }}" ]]; then
-            OPTS="$OPTS --name ${{ vars.WORKER_NAME }}"
-          fi
-          if [[ "${{ github.ref_name }}" -ne main ]]; then
-            OPTS="$OPTS --env dev"
-          fi
-          npx wrangler deploy -c deploy.json $OPTS
         env:
-          WORKER_NAME: ${{ env.WORKER_NAME }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          WORKER_NAME: ${{ vars.WORKER_NAME }}
+          API_TOKEN: ${{ secrets.CAPTURE_API_TOKEN }}
+        run: |
+          OPTS=()
+          if [[ -n "$WORKER_NAME" ]]; then
+            OPTS+=(--name "$WORKER_NAME")
+          fi
+          # Upload API_TOKEN only when provided, so an unset repository secret
+          # never overwrites a token configured with `wrangler secret put`
+          if [[ -n "$API_TOKEN" ]]; then
+            umask 077
+            jq -n --arg token "$API_TOKEN" '{API_TOKEN: $token}' > "$RUNNER_TEMP/secrets.json"
+            OPTS+=(--secrets-file "$RUNNER_TEMP/secrets.json")
+          fi
+          npx wrangler deploy -c deploy.json "${OPTS[@]}"

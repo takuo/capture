@@ -7,9 +7,8 @@
 		"dev": "wrangler dev",
 		"start": "wrangler dev",
 		"test": "vitest",
+		"typecheck": "tsc --noEmit && tsc --noEmit -p test",
 		"cf-typegen": "wrangler types",
-		"lint": "eslint .",
-		"format": "prettier --write .",
 		"build": "wrangler deploy --dry-run --outdir=dist"
 	},
 	"devDependencies": {

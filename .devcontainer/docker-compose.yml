@@ -10,7 +10,7 @@ services:
     volumes:
       - /etc/localtime:/etc/localtime:ro
       - ../:/work/capture
-      - home:/home/vscode
+      - home:/home/node
     command: sleep infinity
 
 volumes:

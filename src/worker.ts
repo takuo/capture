@@ -2,108 +2,98 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { bearerAuth } from 'hono/bearer-auth';
 
-export interface Env {
+export interface Bindings {
 	CAPTURE_BUCKET: R2Bucket;
 	R2_DOMAIN: string;
-	CORS_ORIGINS: string;
-	API_TOKEN: string;
+	CORS_ORIGINS?: string;
+	API_TOKEN?: string;
 }
 
-const app = new Hono<{ Bindings: Env }>();
+export const MAX_SIZE = 20 * 1024 * 1024;
+
+const ALLOWED_TYPES: Record<string, string> = {
+	'image/png': 'png',
+	'image/jpeg': 'jpg',
+	'image/gif': 'gif',
+	'image/webp': 'webp',
+	'image/avif': 'avif',
+};
+
+const CATEGORY_RE = /^[A-Za-z0-9_-]+(\/[A-Za-z0-9_-]+)*$/;
+
+const app = new Hono<{ Bindings: Bindings }>();
 
 // CORS should be called before the route
-app.use('*', async (c, next) => {
-	const corsMiddlewareHandler = cors({
-		origin: c.env.CORS_ORIGINS.split(','),
-	})
-	return corsMiddlewareHandler(c, next);
+app.use('*', (c, next) => {
+	const origins = (c.env.CORS_ORIGINS ?? '')
+		.split(',')
+		.map((s) => s.trim())
+		.filter(Boolean);
+	return cors({ origin: origins })(c, next);
 });
 
-// bearerauth
-app.use('*', async (c, next) => {
-	if (c.env.API_TOKEN != "") {
-		const bearerMiddlewareHandler = bearerAuth({ token: c.env.API_TOKEN });
-		return bearerMiddlewareHandler(c, next);
+// Authorization is required only for uploads; static files are public
+app.use('*', (c, next) => {
+	if (c.req.method !== 'POST' || !c.env.API_TOKEN) {
+		return next();
 	}
+	return bearerAuth<{ Bindings: Bindings }>({ token: c.env.API_TOKEN })(c, next);
 });
-
-async function sha1(data: ArrayBuffer): Promise<string> {
-	const hash = await crypto.subtle.digest('SHA-1', data);
-	return Array.from(new Uint8Array(hash))
-		.map(b => b.toString(16).padStart(2, '0'))
-		.join('');
-}
-
-function getExtension(filename: string): string {
-	const ext = filename.split('.').pop();
-	return ext ? `.${ext}` : '.png';
-}
-
-app.all('/', async (c) => {  return c.text('Forbidden', 403) });
 
 app.post('/*', async (c) => {
-	const url = new URL(c.req.url);
-	const category = url.pathname.replace(/^\/|\/$/g, '');
-	const body = await c.req.parseBody();
-	const file = body['file'] as File;
+	const category = c.req.path.replace(/^\/+|\/+$/g, '');
+	if (!CATEGORY_RE.test(category)) {
+		return c.text('Invalid category', 400);
+	}
 
-	if (!file) {
+	const body = await c.req.parseBody();
+	const file = body['file'];
+	if (!(file instanceof File)) {
 		return c.text('No file uploaded', 400);
 	}
-	const buffer = await file.arrayBuffer();
-
-	const today = new Date();
-	const timestamp = today.getTime().toString();
-	const combinedBuffer = new Uint8Array([
-		...new Uint8Array(buffer),
-		...new TextEncoder().encode(timestamp)
-	]);
-
-	const hash = await sha1(combinedBuffer);
-	const extension = getExtension(file.name);
-	const key = `${hash}${extension}`;
-
-	if (category == "static") {
-		const filename = `static/${key}`;
-		const options: R2PutOptions = {
-			customMetadata: {
-				datetime: today.toISOString(),
-				category: "static",
-			}
-		};
-		const result = await c.env.CAPTURE_BUCKET.put(filename, buffer, options);
-		return c.text(`https://${c.env.R2_DOMAIN}/${result.key}`);
+	if (file.size > MAX_SIZE) {
+		return c.text('File too large', 413);
+	}
+	const extension = ALLOWED_TYPES[file.type];
+	if (!extension) {
+		return c.text('Unsupported media type', 415);
 	}
 
-	const fileName = (category != "" ? category + "/" : category) + key;
-	const options: R2PutOptions = {
+	const key = `${category}/${crypto.randomUUID()}.${extension}`;
+	await c.env.CAPTURE_BUCKET.put(key, await file.arrayBuffer(), {
+		httpMetadata: { contentType: file.type },
 		customMetadata: {
-			datetime: today.toISOString(),
-			category: category,
-		}
-	};
-
-	const result = await c.env.CAPTURE_BUCKET.put(fileName, buffer, options);
-	return c.text(`https://${c.env.R2_DOMAIN}/${result.key}`);
+			datetime: new Date().toISOString(),
+			category,
+		},
+	});
+	return c.text(`https://${c.env.R2_DOMAIN}/${key}`, 201);
 });
 
 app.get('/*', async (c) => {
-	const url = new URL(c.req.url);
-	const cacheKey = new Request(url.toString(), c.req.raw);
+	if (c.req.path === '/') {
+		return c.text('Forbidden', 403);
+	}
+
+	const cacheKey = new Request(c.req.url);
 	const cache = caches.default;
-	let response = await cache.match(cacheKey);
-	if (response) {
-		return response;
+	const cached = await cache.match(cacheKey);
+	if (cached) {
+		return cached;
 	}
 
-	const staticFile = await c.env.CAPTURE_BUCKET.get(`static${url.pathname}`);
-	if (staticFile) {
-		response = new Response(staticFile.body, { headers: { 'Content-Type': staticFile.httpMetadata?.contentType || 'image/png' } });
-		c.executionCtx.waitUntil(cache.put(cacheKey, response.clone()));
-		return response;
+	const object = await c.env.CAPTURE_BUCKET.get(`static${c.req.path}`);
+	if (!object) {
+		return c.text('Not Found', 404);
 	}
 
-	return c.text('Forbidden', 403);
+	const headers = new Headers();
+	object.writeHttpMetadata(headers);
+	headers.set('etag', object.httpEtag);
+	headers.set('cache-control', 'public, max-age=86400');
+	const response = new Response(object.body, { headers });
+	c.executionCtx.waitUntil(cache.put(cacheKey, response.clone()));
+	return response;
 });
 
 export default app;
