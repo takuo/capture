@@ -1,0 +1,3 @@
+[tools]
+# Keep in sync with .github/workflows and .devcontainer
+node = "24"
