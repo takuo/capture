@@ -4,3 +4,7 @@
 .wrangler/
 node_modules/
 
+.env
+.env.*
+deploy.json
+dist/

@@ -6,8 +6,7 @@ on:
   pull_request:
 
 permissions:
-  contents: write
-  pull-requests: write
+  contents: read
 
 jobs:
   build:
@@ -25,16 +24,17 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Run build
-        run: |
-          export R2_BUCKET_NAME="exapmple-bucket"
-          export R2_DOMAIN="example.com"
-          < wrangler.json envsubst > deploy.json
-          npx wrangler deploy -c deploy.json --dry-run --outdir=dist
+      - name: Type check
+        run: npm run typecheck
 
-      - name: approve
-        if: github.event.pull_request.user.login == 'dependabot[bot]' && github.repository == 'takuo/capture'
-        run: gh pr review "$PR_URL" --approve --body 'Automated approval for Dependabot updates.'
+      - name: Test
+        run: npm test -- --run
+
+      - name: Run build
         env:
-          PR_URL: ${{github.event.pull_request.html_url}}
-          GH_TOKEN: ${{secrets.GITHUB_TOKEN}}
+          R2_BUCKET_NAME: example-bucket
+          R2_DOMAIN: example.com
+          CORS_ORIGINS: https://example.com
+        run: |
+          envsubst < wrangler.json > deploy.json
+          npx wrangler deploy -c deploy.json --dry-run --outdir=dist
