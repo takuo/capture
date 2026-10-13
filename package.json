@@ -13,7 +13,7 @@
 	},
 	"devDependencies": {
 		"@cloudflare/vitest-plugin": "^1.4.0",
-		"@cloudflare/workers-types": "^5.20261009.1",
+		"@cloudflare/workers-types": "^5.20261010.1",
 		"hono": "^4.13.7",
 		"typescript": "^7.0.2",
 		"vitest": "~5.0.3",
