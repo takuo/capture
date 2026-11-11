@@ -76,7 +76,7 @@ app.post('/*', async (c) => {
 	}
 
 	const body = await c.req.parseBody();
-	const file = body['file'];
+	const file = body['file'] ?? body['imagedata'];
 	if (!(file instanceof File)) {
 		return c.text('No file uploaded', 400);
 	}
